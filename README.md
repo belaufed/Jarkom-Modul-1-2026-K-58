@@ -794,7 +794,8 @@ Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
    ```
 3. Klik kanan pada paket HTTP lalu pilih **Follow → HTTP Stream** untuk membaca *request* dan *response* utuh.
 
-![Wireshark Soal 14](img/soal14-wireshark.png)
+![Wireshark Soal 14](<img width="1913" height="822" alt="Screenshot 2026-09-17 080100" src="https://github.com/user-attachments/assets/ce75cfd8-6265-4a49-ab2b-c14f3dc464aa" />
+)
 *Gambar 14.1 — Stream 59 (5 paket dari 351) dan Follow HTTP Stream yang menampilkan kredensial.*
 
 ### Temuan
@@ -855,7 +856,8 @@ X-Powered-By: PHP/8.3.14
 nc 10.4.89.250 3401
 ```
 
-![Validasi Soal 14](img/soal14-validasi.png)
+![Validasi Soal 14](<img width="1480" height="760" alt="Screenshot 2026-09-17 080757" src="https://github.com/user-attachments/assets/84463133-e074-471d-998b-fb3edde9eb67" />
+)
 *Gambar 14.2 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{W1r3d_Brut3_TkFuZE8pqxgo36r4cVTTDIFW7}`
