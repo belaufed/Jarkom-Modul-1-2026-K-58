@@ -794,7 +794,7 @@ Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
    ```
 3. Klik kanan pada paket HTTP lalu pilih **Follow → HTTP Stream** untuk membaca *request* dan *response* utuh.
 
-![Wireshark Soal 14](images/soal14.1.png
+![Wireshark Soal 14](Images/soal14.1.png
 )
 *Gambar 14.1 — Stream 59 (5 paket dari 351) dan Follow HTTP Stream yang menampilkan kredensial.*
 
