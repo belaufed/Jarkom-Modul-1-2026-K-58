@@ -959,3 +959,317 @@ nc 10.4.89.250 3402
 **Flag:** `KOMJAR26{USB_K3ystr0k3_w90lw7mTJn3iSliBm8Cn876tK}`
 
 ---
+## Soal 16 — FTP Credential Theft
+
+**Tujuan:** menganalisis `wired_ftp_theft.pcapng` untuk menemukan IP server FTP penyerang, *banner* FTP, kredensial login penyerang, dan ukuran file `knights_payload.exe`.
+
+### Langkah Analisis
+
+1. Buka `wired_ftp_theft.pcapng` (**111 paket**). Capture memuat beberapa sesi FTP, termasuk sesi pengecoh.
+2. Petakan seluruh sesi FTP dengan menampilkan *banner* server dan *username* yang dikirim klien:
+   ```
+   ftp.request.command == "USER" || ftp.response.code == 220
+   ```
+   Filter ini menyisakan 8 paket (7,2%).
+3. Pilih sesi yang mengunduh `knights_payload.exe`, lalu gunakan **Follow → TCP Stream** untuk membaca perintah `USER`, `PASS`, dan `RETR` serta respons server.
+
+![Wireshark Soal 16](img/soal16-wireshark.png)
+*Gambar 16.1 — Empat sesi FTP yang teridentifikasi dari filter `USER` / respons `220`.*
+
+### Peta Sesi FTP
+
+| Frame | Server | Banner (respons `220`) | Klien | `USER` |
+|:---:|---|---|---|---|
+| 4 / 6 | `10.7.3.60` | `InternalFileServer FTP ready` | `10.7.3.20` | `alice` |
+| 18 / 22 | `10.7.3.60` | `InternalFileServer FTP ready` | `10.7.3.30` | `mika` |
+| 42 / 48 | `198.51.100.7` | `wired-drop FTP server` | `10.7.3.40` | `guest` |
+| 64 / 66 | `198.51.100.7` | `Welcome to Wired FTP Server (vsftpd 3.0.5)` | `10.7.3.50` | `knights_agent` |
+
+Sesi `alice` dan `mika` berlangsung antara klien internal dan `InternalFileServer` (lalu lintas normal). Dua sesi lainnya terhubung ke IP publik `198.51.100.7`, yaitu server di luar jaringan internal `10.7.3.0/24`. Sesi `guest` hanya berupa login tanpa aktivitas malware, sedangkan sesi **`knights_agent`** adalah sesi yang mengunduh `knights_payload.exe`.
+
+### Temuan
+
+| Pertanyaan | Jawaban |
+|---|---|
+| IP server FTP penyerang | **`198.51.100.7`** |
+| Banner software FTP | **`vsftpd 3.0.5`** (dari `220 Welcome to Wired FTP Server (vsftpd 3.0.5)`) |
+| Kredensial penyerang | **`knights_agent:N4v1_s3cur3_2026`** |
+| Ukuran `knights_payload.exe` | **`524288`** bytes (512 KiB) |
+
+### Analisis
+
+- FTP mengirim perintah dan kredensial dalam **teks biasa**. Contoh pada *hex dump* frame 6: `55 53 45 52 20 61 6c 69 63 65 0d 0a` = `USER alice\r\n`.
+- *Banner* `220` yang dikirim otomatis saat koneksi dibuka membocorkan nama dan versi software server (`vsftpd 3.0.5`).
+- Ukuran file `524288` bytes = 2¹⁹ = 512 KiB, ukuran yang lazim untuk file uji berukuran tetap.
+- Dua sesi berbeda berasal dari IP server yang sama (`198.51.100.7`) dengan *banner* berbeda. Jawaban yang dipilih harus mengikuti sesi penyerang (`knights_agent`), bukan sesi `guest`.
+- **Mitigasi:** ganti FTP dengan **SFTP/FTPS**, sembunyikan *banner* (`ftpd_banner` pada vsftpd), dan batasi koneksi keluar ke IP publik yang tidak dikenal.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3403
+```
+
+![Validasi Soal 16](img/soal16-validasi.png)
+*Gambar 16.2 — Semua jawaban benar dan flag diterima.*
+
+**Flag:** `KOMJAR26{FTP_Th3ft_WW54JivFvObxTyi5MckEspNC6}`
+
+---
+
+## Soal 17 — HTTP Malware Retrieval
+
+**Tujuan:** menganalisis `wired_http_c2.pcapng` untuk menemukan domain (Host) sumber malware, IP server penyerang, nama file executable yang diunduh, dan kode status HTTP.
+
+### Langkah Analisis
+
+1. Buka `wired_http_c2.pcapng` (**31 paket**).
+2. Isolasi sesi unduhan dengan filter:
+   ```
+   tcp.stream eq 4
+   ```
+3. Buka **Follow → HTTP Stream** dan periksa header pada *packet details* (*Hypertext Transfer Protocol*).
+
+![Wireshark Soal 17](img/soal17-wireshark.png)
+*Gambar 17.1 — Stream 4 (5 paket dari 31) dan Follow HTTP Stream yang menampilkan unduhan `navi_agent.exe`.*
+
+### Temuan
+
+Alur paket pada stream 4:
+
+| Frame | Arah | Info |
+|:---:|---|---|
+| 27 | `10.7.1.50` → `203.0.113.42` | TCP `51234 → 80` **[SYN]** |
+| 28 | `203.0.113.42` → `10.7.1.50` | TCP **[SYN, ACK]** |
+| 29 | `10.7.1.50` → `203.0.113.42` | TCP **[ACK]** |
+| 30 | `10.7.1.50` → `203.0.113.42` | HTTP `GET /navi_agent.exe HTTP/1.1` |
+| 31 | `203.0.113.42` → `10.7.1.50` | HTTP `200 OK` |
+
+Request dan response:
+
+```http
+GET /navi_agent.exe HTTP/1.1
+Host: wired-update.net
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+Accept: */*
+Connection: keep-alive
+
+HTTP/1.1 200 OK
+Server: nginx/1.24.0
+Content-Type: application/octet-stream
+Content-Length: 396
+Content-Disposition: attachment; filename="navi_agent.exe"
+```
+
+Wireshark juga menampilkan *Full request URI*: `http://wired-update.net/navi_agent.exe`.
+
+| Pertanyaan | Jawaban | Bukti |
+|---|---|---|
+| Domain (Host) | **`wired-update.net`** | Header `Host` pada request |
+| IP server penyerang | **`203.0.113.42`** | Tujuan `GET` dan pengirim respons `200 OK` |
+| Nama file executable | **`navi_agent.exe`** | URI request dan `Content-Disposition` |
+| Kode status HTTP | **`200`** | Frame 31: `HTTP/1.1 200 OK` |
+
+### Analisis
+
+- Body respons diawali byte **`MZ`** (`4D 5A`), yaitu *magic number* file **PE (Windows executable)**, dan berisi *DOS stub* ("This program cannot be run in DOS mode"). Ini memastikan file yang diunduh benar-benar executable.
+- `Content-Type: application/octet-stream` dan `Content-Disposition: attachment` membuat file diperlakukan sebagai unduhan biner.
+- Domain `wired-update.net` menyamar sebagai layanan *update* yang sah, teknik umum untuk mengelabui korban maupun filter jaringan.
+- Klien `10.7.1.50` adalah **korban** (pengunduh), sedangkan `203.0.113.42` adalah **server penyerang** (penyedia malware). Jangan tertukar antara kedua IP ini.
+- **Mitigasi:** *web/DNS filtering*, blokir unduhan `.exe` dari domain tak dikenal, dan gunakan HTTPS dengan inspeksi TLS pada gateway.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3404
+```
+
+![Validasi Soal 17](img/soal17-validasi.png)
+*Gambar 17.2 — Flag diterima.*
+
+**Flag:** `KOMJAR26{Navi_C2_D0wnl04d_Z0W4o3x8QMppUX7Fn16BlTYap}`
+
+---
+
+## Soal 18 — SMB Lateral Transfer
+
+**Tujuan:** menganalisis `wired_smb_transfer.pcapng` untuk menemukan protokol yang dieksploitasi, IP pengirim dan penerima, folder tujuan malware, dan nama file malware.
+
+### Langkah Analisis
+
+1. Buka `wired_smb_transfer.pcapng` (**27 paket**) tanpa filter, karena seluruh trafik adalah satu sesi SMB.
+2. Amati urutan paket dari *handshake* TCP hingga pertukaran pesan SMB2.
+3. Periksa pesan `Tree Connect Request` untuk mengetahui *share* tujuan, lalu paket SMB2 setelahnya untuk nama file yang ditulis.
+
+![Wireshark Soal 18](img/soal18-wireshark.png)
+*Gambar 18.1 — Urutan sesi SMB2 dari `10.7.3.100` ke `10.7.1.50`.*
+
+### Alur Sesi (frame 1–12)
+
+| Frame | Arah | Info |
+|:---:|---|---|
+| 1–3 | `10.7.3.100` ⇄ `10.7.1.50` | TCP handshake ke port **445** (`49152 → 445`) |
+| 4 | `10.7.3.100` → `10.7.1.50` | SMB2 **Negotiate Protocol Request** |
+| 6 | `10.7.1.50` → `10.7.3.100` | SMB2 **Negotiate Protocol Response** |
+| 8 | `10.7.3.100` → `10.7.1.50` | SMB2 **Session Setup Request** |
+| 10 | `10.7.1.50` → `10.7.3.100` | SMB2 **Session Setup Response** |
+| 12 | `10.7.3.100` → `10.7.1.50` | SMB2 **Tree Connect Request**, Tree: `\\10.7.1.50\ADMIN$` |
+
+### Temuan
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Protokol file sharing | **`SMB2`** |
+| IP pengirim (sumber malware) | **`10.7.3.100`** |
+| IP penerima (korban) | **`10.7.1.50`** |
+| Share/folder tujuan | **`ADMIN$`** |
+| Nama file malware | **`wired_trojan_payload.exe`** |
+
+### Analisis
+
+- **SMB2** berjalan langsung di atas TCP **port 445**. Sebelum transfer, pengirim harus melewati tahap *negotiate*, *session setup* (autentikasi), lalu *tree connect* ke share.
+- **`ADMIN$`** adalah *hidden administrative share* Windows yang memetakan ke direktori sistem (`C:\Windows`). Share ini hanya dapat diakses akun administrator, sehingga menulis file ke sana menandakan penyerang sudah memiliki kredensial admin.
+- Pola "salin file ke `ADMIN$` lalu jalankan" merupakan teknik klasik ***lateral movement*** (mirip cara kerja PsExec), yaitu penyerang berpindah dari satu host ke host lain di dalam jaringan.
+- **Mitigasi:** batasi akses port 445 antar-segmen dengan firewall, nonaktifkan admin share bila tidak diperlukan, terapkan prinsip *least privilege*, dan pantau penulisan file `.exe` ke `ADMIN$`.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3405
+```
+
+![Validasi Soal 18](img/soal18-validasi.png)
+*Gambar 18.2 — Semua jawaban benar dan flag diterima.*
+
+**Flag:** `KOMJAR26{SMB_Tr4nsf3r_oyiFYdDiXqUSVjzDLLDNPz8XI}`
+
+---
+
+## Soal 19 — SMTP Threat Inspection
+
+**Tujuan:** menganalisis `wired_smtp_threat.pcapng` pada stream TCP terkait untuk menemukan email korban, password yang diklaim bocor, jenis malware, batas waktu pembayaran, dan `MailClientID`.
+
+### Langkah Analisis
+
+1. Buka `wired_smtp_threat.pcapng` dan cari sesi SMTP yang berisi email ancaman.
+2. Pada stream tersebut (`tcp.stream eq 6`), pilih **Follow → TCP Stream**. Stream berisi 6 paket klien dan 7 paket server (12 *turns*, 1101 bytes).
+3. Baca perintah `DATA`, respons `354`, header email, dan body pesan.
+
+![Wireshark dan validasi Soal 19](img/soal19-wireshark-validasi.png)
+*Gambar 19.1 — Kiri: Follow TCP Stream berisi email pemerasan. Kanan: validasi ke socket server port 3406.*
+
+### Header Email
+
+| Header | Nilai |
+|---|---|
+| `From` | `attacker@darkwired.net` |
+| `To` | `victim@protocol7.co.jp` |
+| `Subject` | `URGENT: Your Wired account has been compromised` |
+| `Date` | `Thu, 10 Sep 2026 09:00:00 +0700` |
+| `Content-Type` | `text/plain; charset=UTF-8` |
+
+### Temuan
+
+Isi pesan menyebutkan: password `pr0tocol_7_user`, komputer terinfeksi "*private ransomware*", permintaan **2 BTC**, batas waktu **72 jam (3 hari)**, dan baris penutup `MailClientID: 7719980706`.
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Email korban | **`victim@protocol7.co.jp`** |
+| Password yang diklaim bocor | **`pr0tocol_7_user`** |
+| Jenis malware | **`ransomware`** |
+| Batas waktu (hari) | **`3`** (72 jam) |
+| MailClientID | **`7719980706`** |
+
+### Analisis
+
+- Email berada dalam sesi SMTP **tanpa enkripsi**, sehingga seluruh header, body, dan `MailClientID` terbaca penuh lewat *Follow TCP Stream*.
+- Respons `354 End data with <CR><LF>.<CR><LF>` menandakan server siap menerima isi email. Baris tunggal `.` di akhir stream menutup bagian `DATA`.
+- Pesan ini bercirikan **email pemerasan (*extortion / sextortion-style scam*)**: menyebut password lama korban untuk menimbulkan kesan kredibel, menetapkan tenggat 72 jam, dan meminta pembayaran Bitcoin. Klaim semacam ini sering kali tidak didukung bukti nyata.
+- **Mitigasi:** gunakan **STARTTLS/SMTPS**, terapkan **SPF, DKIM, dan DMARC** untuk menyaring pengirim palsu, dan edukasi pengguna untuk tidak membayar atau membalas email pemerasan.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3406
+```
+
+Hasil validasi terlihat pada sisi kanan Gambar 19.1.
+
+**Flag:** `KOMJAR26{SMTP_Ext0rt10n_Sm4fovNPoSdzXJe44U39trcVI}`
+
+---
+
+## Soal 20 — TLS Decrypted Stream
+
+**Tujuan:** menganalisis `wired_tls_decrypt.pcapng` bersama file keylog untuk menemukan versi TLS, SNI, IP server HTTPS, User-Agent, serta *method* dan *path* HTTP di dalam sesi terenkripsi.
+
+### Langkah Analisis
+
+1. **Konfigurasi dekripsi.** Di Wireshark buka **Edit → Preferences → Protocols → TLS**, lalu isi **(Pre)-Master-Secret log filename** dengan lokasi file keylog (`keylogfile.txt`).
+
+   ![Preferences TLS](img/soal20-preferences-tls.png)
+   *Gambar 20.1 — Pengaturan file keylog pada preferensi TLS.*
+
+2. **Filter stream.** Buka `wired_tls_decrypt.pcapng` (**9 paket**) dan tampilkan seluruh sesi dengan:
+   ```
+   tcp.stream eq 0
+   ```
+3. **Baca hasil dekripsi.** Setelah keylog dimuat, paket *Application Data* terenkripsi ditampilkan sebagai HTTP, dan tab **Decrypted TLS** muncul pada *packet bytes*.
+
+![Wireshark Soal 20](img/soal20-wireshark.png)
+*Gambar 20.2 — Sesi TLS yang berhasil didekripsi: frame 6 tampil sebagai `HEAD / HTTP/1.1`.*
+
+### Alur Sesi
+
+| Frame | Arah | Info |
+|:---:|---|---|
+| 1 | `10.9.0.2` → `93.184.216.34` | TLSv1.2 **Client Hello (SNI=example.com)** |
+| 2 | `93.184.216.34` → `10.9.0.2` | **Server Hello** |
+| 3 | `93.184.216.34` → `10.9.0.2` | Certificate, Server Key Exchange, Server Hello Done |
+| 4 | `10.9.0.2` → `93.184.216.34` | Client Key Exchange, Change Cipher Spec, Finished |
+| 5 | `93.184.216.34` → `10.9.0.2` | Change Cipher Spec, Finished |
+| 6 | `10.9.0.2` → `93.184.216.34` | **HTTP `HEAD / HTTP/1.1`** (hasil dekripsi) |
+| 7 | `93.184.216.34` → `10.9.0.2` | **HTTP/1.1 200 OK** (hasil dekripsi) |
+| 8–9 | dua arah | Alert (Warning): **Close Notify** |
+
+Isi *request* setelah didekripsi:
+
+```http
+HEAD / HTTP/1.1
+Host: example.com
+User-Agent: curl/7.62.0
+Accept: */*
+```
+
+Wireshark menampilkan *Full request URI*: `https://example.com/`.
+
+### Temuan
+
+| Pertanyaan | Jawaban | Bukti |
+|---|---|---|
+| Versi TLS | **`TLSv1.2`** | Kolom Protocol dan *Record Version* `TLS 1.2 (0x0303)` |
+| Domain (SNI / Host) | **`example.com`** | `Client Hello (SNI=example.com)` dan header `Host` |
+| IP server HTTPS | **`93.184.216.34`** | Tujuan Client Hello dan sumber Server Hello |
+| User-Agent | **`curl/7.62.0`** | Header pada request hasil dekripsi |
+| HTTP method & path | **`HEAD /`** | Request line `HEAD / HTTP/1.1` |
+
+### Analisis
+
+- Tanpa keylog, isi sesi hanya terlihat sebagai *Encrypted Application Data* (*Content Type: Application Data (23)*). Semua informasi HTTP (Host, User-Agent, method, path) tersembunyi. Setelah file **keylog (pre-master secret)** dimuat, Wireshark dapat menurunkan kunci sesi dan menampilkan plaintext.
+- Field yang tetap terlihat tanpa dekripsi hanyalah *metadata handshake* seperti SNI, IP, dan versi TLS. Karena itu SNI dapat dipakai untuk mengetahui domain tujuan meskipun isi komunikasi terenkripsi.
+- Ukuran *record* terenkripsi adalah 100 byte, sedangkan hasil dekripsi (*Decrypted TLS*) adalah **76 byte**. Nilai 76 byte sesuai dengan panjang plaintext request HTTP di atas, dan selisihnya adalah *overhead* enkripsi.
+- Metode **`HEAD`** meminta header saja tanpa body (setara `curl -I`). Ini lazim dipakai untuk mengecek keberadaan atau status sebuah resource, termasuk oleh malware saat memeriksa koneksi ke server C2.
+- **Pelajaran:** enkripsi TLS melindungi isi komunikasi dari penyadap pasif, tetapi tidak berguna bagi pembela jika kunci sesi tidak tersedia. Sebaliknya, keylog yang bocor membuat seluruh sesi dapat dibaca.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3407
+```
+
+![Validasi Soal 20](img/soal20-validasi.png)
+*Gambar 20.3 — Semua jawaban benar dan flag diterima.*
+
+**Flag:** `KOMJAR26{TLS_D3crypt_q7BroKu46DecGhKpmEHpVuGhu}`
+
+---
