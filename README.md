@@ -863,3 +863,99 @@ nc 10.4.89.250 3401
 **Flag:** `KOMJAR26{W1r3d_Brut3_TkFuZE8pqxgo36r4cVTTDIFW7}`
 
 ---
+## Soal 15 — USB Keystroke Decoding
+
+**Tujuan:** menganalisis `wired_usb_hid.pcap` untuk menemukan Vendor ID, Product ID, alamat *device* USB, dan pesan rahasia dari *keystroke* keyboard.
+
+### Langkah Analisis
+
+1. Buka `wired_usb_hid.pcap` di Wireshark. Awal capture berisi proses **enumerasi USB**: `GET DESCRIPTOR` (DEVICE dan CONFIGURATION) lalu `SET CONFIGURATION` (frame 1–8). Setelah itu terdapat paket data HID yang ditampilkan Wireshark sebagai `Unknown type 7f`.
+2. Pilih **frame 2** (`GET DESCRIPTOR Response DEVICE`) dan buka *USB Device Descriptor* pada *packet details* untuk membaca `idVendor` dan `idProduct`.
+3. Periksa field `usb.device_address` untuk mengetahui alamat *device* yang ditetapkan pada keyboard.
+4. Karena paket data keystroke tidak didekode otomatis oleh Wireshark, isi laporan HID didekode dengan script Python `parse_usb.py`.
+
+![Wireshark Soal 15](img/soal15-wireshark.png)
+*Gambar 15.1 — USB Device Descriptor pada frame 2: `idVendor` dan `idProduct`.*
+
+### Temuan Device Descriptor
+
+| Field | Nilai |
+|---|---|
+| `bcdUSB` | `0x0110` (USB 1.1) |
+| `bDeviceClass` | `0x00` (ditentukan pada Interface Descriptor) |
+| `bMaxPacketSize0` | `8` |
+| `idVendor` | **Logitech, Inc. (`0x046d`)** |
+| `idProduct` | **Keyboard K120 (`0xc31c`)** |
+| `bcdDevice` | `0x0100` |
+| `bNumConfigurations` | `1` |
+
+Verifikasi lewat *hex dump*: USB memakai **little-endian**, sehingga byte `6d 04` dibaca `0x046d` (Vendor ID) dan `1c c3` dibaca `0xc31c` (Product ID).
+
+```
+... 12 01 10 01 00 00 00 08 6d 04 1c c3 00 01 01 02 00 01
+                            └─VID─┘ └─PID─┘
+```
+
+### Dekode Keystroke
+
+Keyboard USB HID (*boot protocol*) mengirim laporan sebesar **8 byte** per penekanan tombol:
+
+| Byte | Isi |
+|:---:|---|
+| 0 | *Modifier* (mis. `0x02` = Left Shift, `0x20` = Right Shift) |
+| 1 | *Reserved* |
+| 2–7 | *Keycode* tombol yang ditekan |
+
+Pemetaan yang relevan: `a`–`z` = `0x04`–`0x1d`, `1`–`9` = `0x1e`–`0x26`, `0` = `0x27`, `-` = `0x2d`. Bila *modifier* Shift aktif, huruf menjadi kapital dan `-` menjadi `_`.
+
+Logika inti dekode:
+
+```python
+LOWER = {**{0x04 + i: chr(ord('a') + i) for i in range(26)},
+         **{0x1e + i: str(i + 1) for i in range(9)},
+         0x27: '0', 0x2d: '-'}
+UPPER = {**{0x04 + i: chr(ord('A') + i) for i in range(26)},
+         0x2d: '_'}
+
+def decode(reports):                      # reports: list of 8-byte HID reports
+    out = []
+    for r in reports:
+        modifier, key = r[0], r[2]
+        if key == 0:                      # key release / laporan kosong
+            continue
+        table = UPPER if modifier & 0x22 else LOWER
+        out.append(table.get(key, LOWER.get(key, '?')))
+    return ''.join(out)
+```
+
+![Hasil dekode](img/soal15-dekode.png)
+*Gambar 15.2 — Output `parse_usb.py`.*
+
+### Temuan
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Vendor ID | **`0x046d`** (Logitech, Inc.) |
+| Product ID | **`0xc31c`** (Keyboard K120) |
+| Alamat device USB | **`7`** |
+| Pesan rahasia | **`Wired_Protocol_7_is_alive_2026`** |
+
+### Analisis
+
+- Pada frame enumerasi awal, kolom Source/Destination masih menampilkan `1794.0.0` (format `bus.device.endpoint`), yaitu *device* pada alamat default `0` sebelum diberi alamat. Alamat **7** adalah alamat yang ditetapkan pada keyboard tersebut.
+- Keyboard USB tidak mengirim karakter ASCII, melainkan **keycode HID**. Karena itu diperlukan proses dekode: keycode → karakter, dengan *modifier* Shift menentukan kapital dan simbol.
+- Pesan `Wired_Protocol_7_is_alive_2026` mengandung huruf kapital (`W`, `P`) dan underscore, yang keduanya memerlukan Shift. Ini menjelaskan mengapa byte *modifier* harus ikut diproses.
+- Contoh ini menunjukkan risiko **USB HID injection / keylogger hardware**: perangkat yang tampak seperti keyboard biasa dapat merekam atau menyuntik input tanpa terdeteksi antivirus.
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3402
+```
+
+![Validasi Soal 15](img/soal15-validasi.png)
+*Gambar 15.3 — Semua jawaban benar dan flag diterima.*
+
+**Flag:** `KOMJAR26{USB_K3ystr0k3_w90lw7mTJn3iSliBm8Cn876tK}`
+
+---
