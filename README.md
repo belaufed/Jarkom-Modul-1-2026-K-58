@@ -794,7 +794,7 @@ Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
    ```
 3. Klik kanan pada paket HTTP lalu pilih **Follow → HTTP Stream** untuk membaca *request* dan *response* utuh.
 
-![Wireshark Soal 14](<img width="1913" height="822" alt="Screenshot 2026-09-17 080100" src="https://github.com/user-attachments/assets/ce75cfd8-6265-4a49-ab2b-c14f3dc464aa" />
+![Wireshark Soal 14](<images/soal14.1.png>
 )
 *Gambar 14.1 — Stream 59 (5 paket dari 351) dan Follow HTTP Stream yang menampilkan kredensial.*
 
@@ -856,7 +856,7 @@ X-Powered-By: PHP/8.3.14
 nc 10.4.89.250 3401
 ```
 
-![Validasi Soal 14](<img width="1480" height="760" alt="Screenshot 2026-09-17 080757" src="https://github.com/user-attachments/assets/84463133-e074-471d-998b-fb3edde9eb67" />
+![Validasi Soal 14](<images/soal14.2.png>
 )
 *Gambar 14.2 — Semua jawaban benar dan flag diterima.*
 
@@ -874,7 +874,7 @@ nc 10.4.89.250 3401
 3. Periksa field `usb.device_address` untuk mengetahui alamat *device* yang ditetapkan pada keyboard.
 4. Karena paket data keystroke tidak didekode otomatis oleh Wireshark, isi laporan HID didekode dengan script Python `parse_usb.py`.
 
-![Wireshark Soal 15](img/soal15-wireshark.png)
+![Wireshark Soal 15](img/soal15.1.png)
 *Gambar 15.1 — USB Device Descriptor pada frame 2: `idVendor` dan `idProduct`.*
 
 ### Temuan Device Descriptor
@@ -928,7 +928,7 @@ def decode(reports):                      # reports: list of 8-byte HID reports
     return ''.join(out)
 ```
 
-![Hasil dekode](img/soal15-dekode.png)
+![Hasil dekode](img/soal15.3.png)
 *Gambar 15.2 — Output `parse_usb.py`.*
 
 ### Temuan
@@ -953,7 +953,7 @@ def decode(reports):                      # reports: list of 8-byte HID reports
 nc 10.4.89.250 3402
 ```
 
-![Validasi Soal 15](img/soal15-validasi.png)
+![Validasi Soal 15](img/soal15.2.png)
 *Gambar 15.3 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{USB_K3ystr0k3_w90lw7mTJn3iSliBm8Cn876tK}`
@@ -973,7 +973,7 @@ nc 10.4.89.250 3402
    Filter ini menyisakan 8 paket (7,2%).
 3. Pilih sesi yang mengunduh `knights_payload.exe`, lalu gunakan **Follow → TCP Stream** untuk membaca perintah `USER`, `PASS`, dan `RETR` serta respons server.
 
-![Wireshark Soal 16](img/soal16-wireshark.png)
+![Wireshark Soal 16](img/soal16.1.png)
 *Gambar 16.1 — Empat sesi FTP yang teridentifikasi dari filter `USER` / respons `220`.*
 
 ### Peta Sesi FTP
@@ -1010,7 +1010,7 @@ Sesi `alice` dan `mika` berlangsung antara klien internal dan `InternalFileServe
 nc 10.4.89.250 3403
 ```
 
-![Validasi Soal 16](img/soal16-validasi.png)
+![Validasi Soal 16](img/soal16.2.png)
 *Gambar 16.2 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{FTP_Th3ft_WW54JivFvObxTyi5MckEspNC6}`
@@ -1030,7 +1030,7 @@ nc 10.4.89.250 3403
    ```
 3. Buka **Follow → HTTP Stream** dan periksa header pada *packet details* (*Hypertext Transfer Protocol*).
 
-![Wireshark Soal 17](img/soal17-wireshark.png)
+![Wireshark Soal 17](img/soal17.1.png)
 *Gambar 17.1 — Stream 4 (5 paket dari 31) dan Follow HTTP Stream yang menampilkan unduhan `navi_agent.exe`.*
 
 ### Temuan
@@ -1084,7 +1084,7 @@ Wireshark juga menampilkan *Full request URI*: `http://wired-update.net/navi_age
 nc 10.4.89.250 3404
 ```
 
-![Validasi Soal 17](img/soal17-validasi.png)
+![Validasi Soal 17](img/soal17.2.png)
 *Gambar 17.2 — Flag diterima.*
 
 **Flag:** `KOMJAR26{Navi_C2_D0wnl04d_Z0W4o3x8QMppUX7Fn16BlTYap}`
@@ -1101,7 +1101,7 @@ nc 10.4.89.250 3404
 2. Amati urutan paket dari *handshake* TCP hingga pertukaran pesan SMB2.
 3. Periksa pesan `Tree Connect Request` untuk mengetahui *share* tujuan, lalu paket SMB2 setelahnya untuk nama file yang ditulis.
 
-![Wireshark Soal 18](img/soal18-wireshark.png)
+![Wireshark Soal 18](img/soal18.1.png)
 *Gambar 18.1 — Urutan sesi SMB2 dari `10.7.3.100` ke `10.7.1.50`.*
 
 ### Alur Sesi (frame 1–12)
@@ -1138,7 +1138,7 @@ nc 10.4.89.250 3404
 nc 10.4.89.250 3405
 ```
 
-![Validasi Soal 18](img/soal18-validasi.png)
+![Validasi Soal 18](img/soal18.2.png)
 *Gambar 18.2 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{SMB_Tr4nsf3r_oyiFYdDiXqUSVjzDLLDNPz8XI}`
@@ -1155,7 +1155,7 @@ nc 10.4.89.250 3405
 2. Pada stream tersebut (`tcp.stream eq 6`), pilih **Follow → TCP Stream**. Stream berisi 6 paket klien dan 7 paket server (12 *turns*, 1101 bytes).
 3. Baca perintah `DATA`, respons `354`, header email, dan body pesan.
 
-![Wireshark dan validasi Soal 19](img/soal19-wireshark-validasi.png)
+![Wireshark dan validasi Soal 19](img/soal19.png)
 *Gambar 19.1 — Kiri: Follow TCP Stream berisi email pemerasan. Kanan: validasi ke socket server port 3406.*
 
 ### Header Email
@@ -1207,7 +1207,7 @@ Hasil validasi terlihat pada sisi kanan Gambar 19.1.
 
 1. **Konfigurasi dekripsi.** Di Wireshark buka **Edit → Preferences → Protocols → TLS**, lalu isi **(Pre)-Master-Secret log filename** dengan lokasi file keylog (`keylogfile.txt`).
 
-   ![Preferences TLS](img/soal20-preferences-tls.png)
+   ![Preferences TLS](img/soal20.2.png)
    *Gambar 20.1 — Pengaturan file keylog pada preferensi TLS.*
 
 2. **Filter stream.** Buka `wired_tls_decrypt.pcapng` (**9 paket**) dan tampilkan seluruh sesi dengan:
@@ -1216,7 +1216,7 @@ Hasil validasi terlihat pada sisi kanan Gambar 19.1.
    ```
 3. **Baca hasil dekripsi.** Setelah keylog dimuat, paket *Application Data* terenkripsi ditampilkan sebagai HTTP, dan tab **Decrypted TLS** muncul pada *packet bytes*.
 
-![Wireshark Soal 20](img/soal20-wireshark.png)
+![Wireshark Soal 20](img/soal20.1.png)
 *Gambar 20.2 — Sesi TLS yang berhasil didekripsi: frame 6 tampil sebagai `HEAD / HTTP/1.1`.*
 
 ### Alur Sesi
@@ -1267,7 +1267,7 @@ Wireshark menampilkan *Full request URI*: `https://example.com/`.
 nc 10.4.89.250 3407
 ```
 
-![Validasi Soal 20](img/soal20-validasi.png)
+![Validasi Soal 20](img/soal20.3.png)
 *Gambar 20.3 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{TLS_D3crypt_q7BroKu46DecGhKpmEHpVuGhu}`
