@@ -856,7 +856,7 @@ X-Powered-By: PHP/8.3.14
 nc 10.4.89.250 3401
 ```
 
-![Validasi Soal 14](images/soal14.2.png
+![Validasi Soal 14](Images/soal14.2.png
 )
 *Gambar 14.2 — Semua jawaban benar dan flag diterima.*
 
@@ -874,7 +874,7 @@ nc 10.4.89.250 3401
 3. Periksa field `usb.device_address` untuk mengetahui alamat *device* yang ditetapkan pada keyboard.
 4. Karena paket data keystroke tidak didekode otomatis oleh Wireshark, isi laporan HID didekode dengan script Python `parse_usb.py`.
 
-![Wireshark Soal 15](images/soal15.1.png)
+![Wireshark Soal 15](Images/soal15.1.png)
 *Gambar 15.1 — USB Device Descriptor pada frame 2: `idVendor` dan `idProduct`.*
 
 ### Temuan Device Descriptor
@@ -928,7 +928,7 @@ def decode(reports):                      # reports: list of 8-byte HID reports
     return ''.join(out)
 ```
 
-![Hasil dekode](images/soal15.3.png)
+![Hasil dekode](Images/soal15.3.png)
 *Gambar 15.2 — Output `parse_usb.py`.*
 
 ### Temuan
@@ -953,7 +953,7 @@ def decode(reports):                      # reports: list of 8-byte HID reports
 nc 10.4.89.250 3402
 ```
 
-![Validasi Soal 15](images/soal15.2.png)
+![Validasi Soal 15](Images/soal15.2.png)
 *Gambar 15.3 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{USB_K3ystr0k3_w90lw7mTJn3iSliBm8Cn876tK}`
@@ -973,7 +973,7 @@ nc 10.4.89.250 3402
    Filter ini menyisakan 8 paket (7,2%).
 3. Pilih sesi yang mengunduh `knights_payload.exe`, lalu gunakan **Follow → TCP Stream** untuk membaca perintah `USER`, `PASS`, dan `RETR` serta respons server.
 
-![Wireshark Soal 16](images/soal16.1.png)
+![Wireshark Soal 16](Images/soal16.1.png)
 *Gambar 16.1 — Empat sesi FTP yang teridentifikasi dari filter `USER` / respons `220`.*
 
 ### Peta Sesi FTP
@@ -1010,7 +1010,7 @@ Sesi `alice` dan `mika` berlangsung antara klien internal dan `InternalFileServe
 nc 10.4.89.250 3403
 ```
 
-![Validasi Soal 16](images/soal16.2.png)
+![Validasi Soal 16](Images/soal16.2.png)
 *Gambar 16.2 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{FTP_Th3ft_WW54JivFvObxTyi5MckEspNC6}`
@@ -1030,7 +1030,7 @@ nc 10.4.89.250 3403
    ```
 3. Buka **Follow → HTTP Stream** dan periksa header pada *packet details* (*Hypertext Transfer Protocol*).
 
-![Wireshark Soal 17](images/soal17.1.png)
+![Wireshark Soal 17](Images/soal17.1.png)
 *Gambar 17.1 — Stream 4 (5 paket dari 31) dan Follow HTTP Stream yang menampilkan unduhan `navi_agent.exe`.*
 
 ### Temuan
@@ -1084,7 +1084,7 @@ Wireshark juga menampilkan *Full request URI*: `http://wired-update.net/navi_age
 nc 10.4.89.250 3404
 ```
 
-![Validasi Soal 17](images/soal17.2.png)
+![Validasi Soal 17](Images/soal17.2.png)
 *Gambar 17.2 — Flag diterima.*
 
 **Flag:** `KOMJAR26{Navi_C2_D0wnl04d_Z0W4o3x8QMppUX7Fn16BlTYap}`
@@ -1101,7 +1101,7 @@ nc 10.4.89.250 3404
 2. Amati urutan paket dari *handshake* TCP hingga pertukaran pesan SMB2.
 3. Periksa pesan `Tree Connect Request` untuk mengetahui *share* tujuan, lalu paket SMB2 setelahnya untuk nama file yang ditulis.
 
-![Wireshark Soal 18](images/soal18.1.png)
+![Wireshark Soal 18](Images/soal18.1.png)
 *Gambar 18.1 — Urutan sesi SMB2 dari `10.7.3.100` ke `10.7.1.50`.*
 
 ### Alur Sesi (frame 1–12)
@@ -1138,7 +1138,7 @@ nc 10.4.89.250 3404
 nc 10.4.89.250 3405
 ```
 
-![Validasi Soal 18](images/soal18.2.png)
+![Validasi Soal 18](Images/soal18.2.png)
 *Gambar 18.2 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{SMB_Tr4nsf3r_oyiFYdDiXqUSVjzDLLDNPz8XI}`
