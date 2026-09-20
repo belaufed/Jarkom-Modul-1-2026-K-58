@@ -1273,3 +1273,24 @@ nc 10.4.89.250 3407
 **Flag:** `KOMJAR26{TLS_D3crypt_q7BroKu46DecGhKpmEHpVuGhu}`
 
 ---
+# REVISI
+### No.11 
+harusnya menggunakan ip server yang mau dituju
+**Contoh:**
+```bash
+telnet 192.240.x.x
+```
+Command tersebut digunakan untuk membuat koneksi remote access menuju server menggunakan protokol Telnet.
+**Proses Capture Wireshark**
+
+Capture dilakukan pada interface yang digunakan oleh node Alice.
+
+Filter yang digunakan:
+```bash
+telnet
+```
+atau
+```bash
+tcp.port == 23
+```
+Filter tersebut digunakan untuk menampilkan paket yang menggunakan protokol Telnet.
