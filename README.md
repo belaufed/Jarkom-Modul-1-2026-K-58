@@ -780,4 +780,84 @@ Nanti muncul isi percakapan Telnet. Cari **Follow** dan pilih **TCP Stream**
 ![Output Soal 11](Images/No11.png)
 
 Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
-## Soal 14
+
+## Soal 14 — Brute Force Analysis
+
+**Tujuan:** menganalisis `wired_bruteforce.pcapng` untuk menemukan IP penyerang, IP dan port target, password `lain_admin` yang berhasil ditembus, serta *web server software* beserta versinya.
+
+### Langkah Analisis
+
+1. Buka `wired_bruteforce.pcapng` di Wireshark. Capture berisi **351 paket** dengan banyak percobaan login.
+2. Isolasi sesi HTTP yang berisi login berhasil dengan display filter:
+   ```
+   tcp.stream eq 59
+   ```
+3. Klik kanan pada paket HTTP lalu pilih **Follow → HTTP Stream** untuk membaca *request* dan *response* utuh.
+
+![Wireshark Soal 14](img/soal14-wireshark.png)
+*Gambar 14.1 — Stream 59 (5 paket dari 351) dan Follow HTTP Stream yang menampilkan kredensial.*
+
+### Temuan
+
+Alur paket pada stream 59 (frame 347–351):
+
+| Frame | Arah | Info |
+|:---:|---|---|
+| 347 | `172.26.7.50` → `172.26.7.100` | TCP `49203 → 8080` **[SYN]** |
+| 348 | `172.26.7.100` → `172.26.7.50` | TCP `8080 → 49203` **[SYN, ACK]** |
+| 349 | `172.26.7.50` → `172.26.7.100` | TCP **[ACK]** |
+| 350 | `172.26.7.50` → `172.26.7.100` | HTTP `POST /login.php HTTP/1.1` (`application/x-www-form-urlencoded`) |
+| 351 | `172.26.7.100` → `172.26.7.50` | HTTP `200 OK` (`text/html`) |
+
+Isi *request* (dari Follow HTTP Stream):
+
+```http
+POST /login.php HTTP/1.1
+Host: 172.26.7.100:8080
+User-Agent: Fuzz Faster U Fool v2.1.0-dev
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 45
+
+username=lain_admin&password=wired_pr0tocol_7
+```
+
+Isi *response*:
+
+```http
+HTTP/1.1 200 OK
+Server: Apache/2.4.62
+Content-Type: text/html; charset=UTF-8
+Content-Length: 35
+X-Powered-By: PHP/8.3.14
+
+<h1>Success! Login successful.</h1>
+```
+
+| Pertanyaan | Jawaban | Bukti |
+|---|---|---|
+| IP penyerang | **`172.26.7.50`** | Pengirim `SYN` dan `POST /login.php` |
+| Target IP:port | **`172.26.7.100:8080`** | Header `Host` dan tujuan paket `POST` |
+| Password `lain_admin` | **`wired_pr0tocol_7`** | Body `POST`, respons `200 OK` berisi "Login successful" |
+| Web server & versi | **`Apache/2.4.62`** | Header `Server` pada respons |
+
+### Analisis
+
+- **User-Agent `Fuzz Faster U Fool v2.1.0-dev`** adalah *user agent* bawaan tool *fuzzing* **ffuf**. Ini indikasi kuat bahwa login dilakukan secara otomatis, bukan oleh pengguna biasa.
+- Seluruh paket pada stream ini tercatat dalam rentang waktu sekitar **1 ms** (`0.060517 s` sampai `0.061507 s`), sesuai dengan kecepatan serangan otomatis.
+- `Content-Length: 45` sesuai dengan panjang body `username=lain_admin&password=wired_pr0tocol_7` (45 karakter).
+- Kredensial terbaca **plain text** karena login berjalan di atas HTTP tanpa enkripsi.
+- Server membocorkan versi perangkat lunaknya lewat header `Server` dan `X-Powered-By` (Apache 2.4.62, PHP 8.3.14). Informasi ini memudahkan penyerang mencari celah yang spesifik.
+- **Mitigasi:** *rate limiting*, *account lockout*, CAPTCHA, MFA, `fail2ban`, HTTPS, dan menyembunyikan versi server (`ServerTokens Prod`, `expose_php = Off`).
+
+### Validasi
+
+```bash
+nc 10.4.89.250 3401
+```
+
+![Validasi Soal 14](img/soal14-validasi.png)
+*Gambar 14.2 — Semua jawaban benar dan flag diterima.*
+
+**Flag:** `KOMJAR26{W1r3d_Brut3_TkFuZE8pqxgo36r4cVTTDIFW7}`
+
+---
