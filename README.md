@@ -781,6 +781,102 @@ Nanti muncul isi percakapan Telnet. Cari **Follow** dan pilih **TCP Stream**
 
 Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
 
+## Soal 12 — Port Scanning & Analisis TCP Flag
+
+**Tujuan:** dari node **Alice**, memindai node **Knights** (`192.240.3.2`) untuk memastikan port **22 (SSH)** dan **80 (HTTP)** terbuka serta port rahasia **7777** tertutup, lalu menganalisis perbedaan TCP flag antara port terbuka (`SYN-ACK`) dan port tertutup (`RST-ACK`) di Wireshark.
+
+### Langkah Pengerjaan
+
+1. **Mulai capture terlebih dahulu.** Di GNS3, jalankan Wireshark pada link `Switch3 Ethernet1 to knights eth0`, yaitu sisi Knights, tempat semua paket pemindaian pasti lewat.
+2. **Jalankan pemindaian dari Alice ke Knights** (perintah yang dijalankan pada terminal Alice):
+   ```bash
+   nmap -p 22,80,7777 -sS -Pn 192.240.3.2
+   ```
+   Opsi yang dipakai: `-p` menentukan port yang diperiksa, `-sS` memakai TCP SYN scan (*half-open*), dan `-Pn` melewati *host discovery* (langsung memindai tanpa ping).
+3. **Pemeriksaan dengan Netcat** (sesuai perintah soal). Opsi `-z` hanya memeriksa port tanpa mengirim data, dan `-v` menampilkan hasilnya:
+   ```bash
+   nc -zv 192.240.3.2 22
+   nc -zv 192.240.3.2 80
+   nc -zv 192.240.3.2 7777
+   ```
+4. **Hentikan capture**, lalu filter dan analisis paketnya (lihat bagian analisis).
+
+![Hasil scan Nmap](img/soal12-nmap.png)
+*Gambar 12.1 — Hasil pemindaian dari Alice ke Knights (`192.240.3.2`).*
+
+> **[TODO — screenshot hasil `nc -zv`]**
+
+### Hasil Pemindaian
+
+| Port | State | Service (label Nmap) |
+|:---:|:---:|:---:|
+| `22/tcp` | **open** | ssh |
+| `80/tcp` | **open** | http |
+| `7777/tcp` | **closed** | cbt |
+
+Nmap melaporkan `Host is up (0.00069s latency)`. Hasil ini sesuai ketentuan soal: port 22 dan 80 terbuka, port 7777 tertutup.
+
+### Analisis TCP Flag di Wireshark
+
+Perbedaan respons Knights terhadap paket `SYN` dari scanner:
+
+| Kondisi port | Balasan Knights | Flag (hex) | Arti |
+|---|---|:---:|---|
+| **Terbuka** (22, 80) | **`SYN, ACK`** | `0x012` | Ada layanan yang *listen*; server menerima permintaan koneksi |
+| **Tertutup** (7777) | **`RST, ACK`** | `0x014` | Tidak ada layanan yang *listen*; koneksi ditolak seketika |
+
+Urutan paketnya:
+
+```
+Port terbuka   : Alice ──SYN──▶ Knights
+                 Alice ◀─SYN,ACK── Knights
+                 Alice ──RST──▶ Knights      (Nmap -sS memutus, handshake tidak diselesaikan)
+                                              (nc -z menyelesaikan handshake dengan ACK, lalu menutup)
+
+Port tertutup  : Alice ──SYN──▶ Knights
+                 Alice ◀─RST,ACK── Knights   (koneksi ditolak)
+```
+
+### Analisis
+
+- Pemindaian TCP bekerja dengan mengirim `SYN` ke tiap port dan membaca balasannya. `SYN-ACK` berarti port **terbuka**, sedangkan `RST-ACK` berarti port **tertutup**. Balasan inilah yang dipakai Nmap dan Netcat untuk menyimpulkan status port.
+- **SYN scan (`-sS`)** disebut *half-open* atau *stealth scan*: setelah menerima `SYN-ACK`, scanner mengirim `RST` dan tidak menyelesaikan *three-way handshake*. **Netcat (`-z`)** memakai *full connect*, yaitu handshake diselesaikan lalu koneksi ditutup, sehingga lebih mudah tercatat di log server.
+- Port berstatus **filtered** (tidak ada balasan sama sekali) terjadi bila ada firewall yang membuang paket. Kasus ini tidak muncul di sini karena port 7777 dibalas `RST`.
+- **Mitigasi:** tutup port yang tidak dipakai, batasi akses dengan firewall, dan pantau lonjakan `SYN` ke banyak port dari satu sumber sebagai tanda *port scan*.
+
+---
+
+## Soal 13 — SSH Key Authentication (Tanpa Password)
+
+**Tujuan:** memasang **OpenSSH server** di node **Knights**, membuat pasangan kunci SSH untuk user `mika_admin` di node **Mika**, mengaktifkan *public key authentication* dengan `PasswordAuthentication no`, lalu menangkap sesi SSH di Wireshark dan menganalisis *Protocol Version Exchange* serta *Key Exchange*.
+
+
+### Langkah Pengerjaan
+
+**1. Instal OpenSSH server di Knights**
+
+```bash
+apt update && apt install -y openssh-server        # image Debian
+# apk add openssh                                  # bila image Alpine
+```
+
+Buat user tujuan login. Password sementara diperlukan agar kunci publik dapat disalin sebelum *password authentication* dimatikan:
+
+```bash
+useradd -m -s /bin/bash mika_admin
+echo "mika_admin:<password_sementara>" | chpasswd
+```
+
+**2. Buat pasangan kunci di Mika (user `mika_admin`)**
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+```
+
+Hasilnya dua file: `id_ed25519` (kunci **privat**, tetap di Mika) dan `id_ed25519.pub` (kunci **publik**, dipasang di Knights).
+
+
 ## Soal 14 — Brute Force Analysis
 
 **Tujuan:** menganalisis `wired_bruteforce.pcapng` untuk menemukan IP penyerang, IP dan port target, password `lain_admin` yang berhasil ditembus, serta *web server software* beserta versinya.
@@ -1155,7 +1251,7 @@ nc 10.4.89.250 3405
 2. Pada stream tersebut (`tcp.stream eq 6`), pilih **Follow → TCP Stream**. Stream berisi 6 paket klien dan 7 paket server (12 *turns*, 1101 bytes).
 3. Baca perintah `DATA`, respons `354`, header email, dan body pesan.
 
-![Wireshark dan validasi Soal 19](images/soal19.png)
+![Wireshark dan validasi Soal 19](Images/soal19.png)
 *Gambar 19.1 — Kiri: Follow TCP Stream berisi email pemerasan. Kanan: validasi ke socket server port 3406.*
 
 ### Header Email
@@ -1207,7 +1303,7 @@ Hasil validasi terlihat pada sisi kanan Gambar 19.1.
 
 1. **Konfigurasi dekripsi.** Di Wireshark buka **Edit → Preferences → Protocols → TLS**, lalu isi **(Pre)-Master-Secret log filename** dengan lokasi file keylog (`keylogfile.txt`).
 
-   ![Preferences TLS](images/soal20.2.png)
+   ![Preferences TLS](Images/soal20.2.png)
    *Gambar 20.1 — Pengaturan file keylog pada preferensi TLS.*
 
 2. **Filter stream.** Buka `wired_tls_decrypt.pcapng` (**9 paket**) dan tampilkan seluruh sesi dengan:
@@ -1216,7 +1312,7 @@ Hasil validasi terlihat pada sisi kanan Gambar 19.1.
    ```
 3. **Baca hasil dekripsi.** Setelah keylog dimuat, paket *Application Data* terenkripsi ditampilkan sebagai HTTP, dan tab **Decrypted TLS** muncul pada *packet bytes*.
 
-![Wireshark Soal 20](images/soal20.1.png)
+![Wireshark Soal 20](Images/soal20.1.png)
 *Gambar 20.2 — Sesi TLS yang berhasil didekripsi: frame 6 tampil sebagai `HEAD / HTTP/1.1`.*
 
 ### Alur Sesi
@@ -1267,7 +1363,7 @@ Wireshark menampilkan *Full request URI*: `https://example.com/`.
 nc 10.4.89.250 3407
 ```
 
-![Validasi Soal 20](images/soal20.3.png)
+![Validasi Soal 20](Images/soal20.3.png)
 *Gambar 20.3 — Semua jawaban benar dan flag diterima.*
 
 **Flag:** `KOMJAR26{TLS_D3crypt_q7BroKu46DecGhKpmEHpVuGhu}`
@@ -1294,3 +1390,81 @@ atau
 tcp.port == 23
 ```
 Filter tersebut digunakan untuk menampilkan paket yang menggunakan protokol Telnet.
+
+### no.13
+**3. Pasang kunci publik di Knights**
+
+```bash
+mkdir -p /home/mika_admin/.ssh
+echo "<isi id_ed25519.pub>" >> /home/mika_admin/.ssh/authorized_keys
+chmod 700 /home/mika_admin/.ssh
+chmod 600 /home/mika_admin/.ssh/authorized_keys
+chown -R mika_admin:mika_admin /home/mika_admin/.ssh
+```
+
+Izin folder dan file harus ketat, karena `sshd` menolak kunci jika izinnya terlalu longgar.
+
+**4. Konfigurasi `sshd` di Knights** (`/etc/ssh/sshd_config`)
+
+```
+PubkeyAuthentication yes
+PasswordAuthentication no
+```
+
+Terapkan perubahan lalu periksa hasilnya:
+
+```bash
+mkdir -p /run/sshd
+service ssh restart                                  # Debian; Alpine: rc-service sshd restart
+sshd -T | grep -Ei "pubkeyauthentication|passwordauthentication"
+```
+
+**5. Mulai capture, lalu login dari Mika ke Knights**
+
+Jalankan Wireshark pada link Knights (atau Mika), kemudian:
+
+```bash
+ssh mika_admin@192.240.3.2
+```
+
+Login berhasil **tanpa diminta password**.
+
+
+### Analisis Wireshark
+
+Filter yang dapat dipakai:
+
+```
+ssh
+```
+
+
+Urutan paket SSH yang perlu diidentifikasi:
+
+| Tahap | Paket di Wireshark | Keterangan |
+|---|---|---|
+| **Protocol Version Exchange** | `Client: Protocol (SSH-2.0-OpenSSH_…)` dan `Server: Protocol (SSH-2.0-OpenSSH_…)` | Kedua sisi saling mengirim *banner* versi. Bagian ini **plain text**. |
+| **Key Exchange Init** | `Client: Key Exchange Init` dan `Server: Key Exchange Init` | Negosiasi algoritma: *key exchange*, *host key*, enkripsi, MAC, dan kompresi. |
+| **Key Exchange** | `Client: Elliptic Curve Diffie-Hellman Key Exchange Init` dan `Server: ECDH Key Exchange Reply, New Keys` | Kedua sisi menghasilkan kunci sesi bersama lewat Diffie-Hellman. |
+| **Aktivasi enkripsi** | `Client: New Keys` | Sejak titik ini seluruh lalu lintas dienkripsi. |
+| **Data sesi** | `Encrypted packet (len=…)` | Otentikasi user dan seluruh isi sesi tidak dapat dibaca. |
+
+
+### Analisis: Mengapa Kredensial Tidak Terlihat?
+
+- Hanya *banner* versi dan daftar algoritma yang dikirim sebagai teks terbuka. Sesudah *Key Exchange* selesai dan `New Keys` dikirim, seluruh isi sesi dienkripsi dengan kunci sesi yang hanya diketahui client dan server.
+- Dengan **public key authentication**, **kunci privat tidak pernah dikirim** lewat jaringan. Client hanya membuktikan kepemilikannya dengan menandatangani data sesi menggunakan kunci privat, dan server memverifikasinya dengan kunci publik di `authorized_keys`. Karena `PasswordAuthentication no`, tidak ada password yang dikirim sama sekali.
+- Diffie-Hellman memungkinkan kunci sesi terbentuk tanpa pernah dikirim langsung, sehingga penyadap yang hanya menangkap paket tidak dapat menurunkan kunci tersebut.
+
+Perbandingan dengan Telnet:
+
+| Aspek | Telnet | SSH (public key) |
+|---|---|---|
+| Enkripsi | Tidak ada | Ada (setelah *Key Exchange*) |
+| Kredensial di jaringan | Username dan password terkirim **plain text** | Tidak ada password; kunci privat tidak dikirim |
+| *Follow TCP Stream* | Mengungkap seluruh sesi | Hanya *banner* dan data terenkripsi |
+| Autentikasi server | Tidak ada | *Host key* diverifikasi |
+
+- **Mitigasi dan praktik baik:** matikan `PasswordAuthentication`, batasi user dengan `AllowUsers`, larang login root, lindungi kunci privat dengan *passphrase*, dan verifikasi *host key fingerprint* saat koneksi pertama.
+
+---
