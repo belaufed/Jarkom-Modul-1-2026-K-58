@@ -84,7 +84,7 @@ Perintah **ip route add** default via digunakan untuk menentukan gateway yang di
 sehingga output yang didapatkan adalah seluruh node berhasil mendapatkan alamat IP sesuai subnet masing2.
 
 ### Output
-![Output Soal 1](./bukit%20no%201-13/266Complete.png)
+![Output Soal 1](./Images/266Complete.png)
 ## Soal 2 - Konfigurasi Routing Antar Subnet
 ### Tujuan
 
@@ -159,7 +159,7 @@ dari client subnet berbeda.
 **Hasil**
 ### Output Soal 2
 Router berhasil melakukan routing antar subnet.
-![Output Soal 2](bukit%20no%201-13/DNSNo6.png)
+![Output Soal 2](Images/DNSNo6.png)
 
 ## Soal 3 - Konfigurasi DNS dan Internet Access
 **Tujuan**
@@ -192,7 +192,7 @@ Ketika melakukan ping terhadap domain, sistem akan melakukan DNS lookup terlebih
 
 DNS berhasil melakukan resolusi domain.
 contoh : google.com | Address : 64.xxx.xxx.xxx
-![Output Soal 3](bukit%20no%201-13/EchoRep.png)
+![Output Soal 3](Images/EchoRep.png)
 
 ## Soal 4 - Membuat Script Monitoring Status Router
 **Tujuan**
@@ -245,7 +245,7 @@ Menampilkan aturan NAT yang aktif.
 iptables -L FORWARD
 ```
 #### Output
-![Output Soal 4](bukit%20no%201-13/MikaDownload.png)
+![Output Soal 4](Images/MikaDownload.png)
 
 ## Soal 5 - Membuat Konfigurasi Persisten Setelah Restart
 **Tujuan**
@@ -337,9 +337,9 @@ chmod +x /root/cek_status.sh
 /root/cek_status.sh
 ```
 ### Output
-![Output Soal 5](bukit%20no%201-13/buktiNo5.png)
-
-![Output Soal 5 Setelah Restart](bukit%20no%201-13/No5TetepAdaSetelahRestart.png)
+![Output Soal 5](Images/buktiNo5.png)
+![Output Soal 5 Setelah Restart](Images/No5TetepAdaSetelahRestart.png)
+![Output Soal 5](Images/soal5final.png)
 
 ## Soal 6 - DNS Resolution dan ICMP Analysis Menggunakan Wireshark
 
@@ -399,8 +399,8 @@ harus memperlihatkan
 - Destination
 
 ### Output
-![Output Soal 6](bukit%20no%201-13/NMAP12.png)
-
+![Output Soal 6](Images/no.6.png)
+![Output Soal 6](Images/DNSNo.6.png)
 ## Soal 7 - Konfigurasi Hak Akses File Linux
 ### Tujuan
 
@@ -452,10 +452,10 @@ Permission denied
 karena user tidak memiliki hak akses write
 
 ### Output
-![Output Soal 7 Eri Ditolak](bukit%20no%201-13/No7EriDitolak.png)
+![Output Soal 7 Hak Alice Write](Images/No7HakAliceWrite.png)
 
-![Output Soal 7 Hak Alice Write](bukit%20no%201-13/No7HakAliceWrite.png)
-
+![Output Soal 7 Eri Ditolak](Images/soal7.png)
+![Output Soal 7 Eri Ditolak](Images/soal7final.png)
 ## Soal 8 - Konfigurasi FTP Server dan Transfer File
 **Tujuan**
 
@@ -597,7 +597,9 @@ Packet yang terlihat:
 - FTP Request STOR
 - FTP Response 226 Transfer Complete
 ### Output
-![Output Soal 8](bukit%20no%201-13/PASV.png)
+![Output Soal 8](Images/vsftdNo8.png)
+![Output Soal 8](Images/no8.png)
+![Output Soal 8](Images/no.8.png)
 
 ## Soal 9 - Analisis Telnet Menggunakan Wireshark
 **Tujuan**
@@ -693,7 +695,7 @@ Karena akun Mika sudah kita konfigurasi read-only, targetnya harus ada respons s
 550 Permission denied
 ```
 ### Output
-![Output Soal 9](bukit%20no%201-13/Paket77.png)
+![Output Soal 9](Images/no9.png)
 ## Soal 10 - ICMP Capture Knights
 ### Tujuan
 Melakukan capture komunikasi ICMP antara node Knights dengan node tujuan.
@@ -720,7 +722,7 @@ Capture Wireshark menunjukkan:
 |Echo Request|	Paket permintaan dari pengirim|
 |Echo Reply|	Balasan dari penerima|
 ### Output
-![Output Soal 10](bukit%20no%201-13/STOR.png)
+![Output Soal 10](Images/STOR.png)
 
 ## Soal 11 - Analisis Telnet Capture Alice
 **Tujuan**
@@ -775,7 +777,7 @@ TCP Stream
 Nanti muncul isi percakapan Telnet. Cari **Follow** dan pilih **TCP Stream**
 
 ### Output
-![Output Soal 11](bukit%20no%201-13/No11.png)
+![Output Soal 11](Images/No11.png)
 
 Kalau ada LISTEN di port 23, berarti Telnet server Chisa sudah hidup ✅.
 ## Soal 14
